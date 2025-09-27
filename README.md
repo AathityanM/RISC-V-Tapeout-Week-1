@@ -174,3 +174,67 @@
   * **Counter Example**: A 3-bit counter would normally require 3 flip-flops. However, if the design has unused states or logic that can be simplified, the tool can perform optimizations. The lab shows an example where a counter's logic is optimized so significantly that it can be implemented with just one flip-flop, demonstrating a massive hardware saving.
 
 </details>
+
+# Day 4 - GLS, Blocking vs Non-blocking and Synthesis-Simulation Mismatch
+
+<details>
+  <summary>🔹 Gate Level Simulation (GLS) & Synthesis Mismatches</summary>
+
+  ### What is Gate Level Simulation (GLS)?
+  GLS is the process of simulating the **synthesized gate-level netlist** of your design, rather than the original RTL code. It verifies that the design's functionality is correct after it has been converted into standard cells (AND, OR, Flip-Flops, etc.) by the synthesis tool.
+  
+  ### Why is GLS Needed?
+  * **Equivalence Check**: To ensure the synthesized netlist behaves identically to the RTL.
+  * **Timing Verification**: To check for setup/hold time violations using real gate delays (often provided in an SDF file).
+  * **X-Propagation Checks**: To find issues with uninitialized signals or race conditions that might not appear in RTL simulation.
+  * **Confidence**: It's a critical verification step before committing to the expensive Place & Route and tapeout stages.
+
+  ### What is a Synthesis-Simulation Mismatch?
+  A mismatch occurs when the **RTL simulation result is different from the GLS result**. This almost always means the Verilog code was written in a way that doesn't accurately describe synthesizable hardware, causing the synthesis tool to interpret it differently than the simulator.
+  
+  * **Common Cause**: A missing signal in a combinational `always` block's sensitivity list.
+    ```verilog
+    // Mismatch will occur here!
+    // RTL sim only updates 'y' when 'a' changes.
+    // Synthesized hardware will update 'y' when 'a' OR 'b' changes.
+    always @(a) begin 
+      y = a & b; 
+    end
+
+    // Correct version - no mismatch
+    // The @(*) tells the simulator to behave like the synthesized hardware.
+    always @(*) begin
+      y = a & b;
+    end
+    ```
+
+</details>
+
+<details>
+  <summary>🔹 Blocking (=) vs. Non-blocking (<=) Assignments</summary>
+  
+  Misusing these assignment types is one of the most common causes of synthesis-simulation mismatches in sequential logic.
+
+  | Feature | Blocking Assignment (`=`) | Non-Blocking Assignment (`<=`) |
+  | :--- | :--- | :--- |
+  | **Execution** | Statements execute **sequentially**, one after the other. | All statements are scheduled to execute **in parallel** at the end of the time step. |
+  | **Analogy** | Like procedural code in software (C, Python). | Models parallel hardware and flip-flop behavior. |
+  | **Use Case** | **Combinational Logic** (`always @(*)`). | **Sequential Logic** (`always @(posedge clk)`). |
+
+  ### The Mismatch Example
+  Consider two flip-flops in series. The goal is for `r` to get the value that `q` had in the *previous* cycle.
+  ```verilog
+  // WRONG - using blocking assignments
+  // Causes a mismatch!
+  always @(posedge clk) begin
+    q = d;
+    r = q; // In simulation, 'r' gets the NEW value of 'd' in the same cycle.
+           // In hardware, 'r' would get the OLD value of 'q'.
+  end
+
+  // CORRECT - using non-blocking assignments
+  // RTL simulation now matches the hardware behavior.
+  always @(posedge clk) begin
+    q <= d;
+    r <= q; // 'r' correctly gets the value 'q' had BEFORE this clock edge.
+  end
