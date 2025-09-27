@@ -239,7 +239,9 @@
     r <= q; // 'r' correctly gets the value 'q' had BEFORE this clock edge.
   end
 
-  ---
+
+
+  ```
 
 # Day 5 - Optimization in Synthesis
 
@@ -250,38 +252,34 @@
   Both `if-else` and `case` statements are used to describe conditional logic. A synthesizer will typically infer a multiplexer (MUX) from a complete `if-else` or `case` statement.
   
   ### The Biggest Pitfall: Inferred Latches
-  A **latch** is an unintended memory element created by the synthesis tool. This happens when the code for a **combinational block** doesn't specify an output value for all possible conditions.
+  A **latch** is an unintended memory element created by the synthesis tool. This is one of the most common bugs for beginners and happens when the code for a **combinational block** doesn't specify an output value for all possible conditions.
   
   **Why Latches are Bad:**
   * They add unnecessary area and power consumption.
-  * They can make timing analysis very difficult.
+  * They are transparent and can make timing analysis very difficult.
   * They represent a mismatch between the designer's intent (combinational logic) and the actual hardware (sequential logic).
 
   ### How Latches Get Inferred
-  1.  **Incomplete `if-else`**: An `if` statement without an `else` clause.
-    
-    ```verilog
-    // BUG: What happens if en==0? A latch is inferred on 'y'.
-    always @(*) begin
-      if (en) 
-        y = d;
-    end
-    ```
-
-    ```verilog
-    // FIX: Provide a default value.
-    always @(*) begin
-      y = 0; // Default assignment
-      if (en)
-        y = d;
-    end
-    ```
-
-  2.  **Incomplete `case`**: A `case` statement without a `default` branch to cover all possible values.
-  3.  **Partial Assignment**: When only some bits of a vector are assigned in a branch, the unassigned bits will be latched.
+  1.  **Incomplete `if-else`**: An `if` statement without an `else` clause. If the condition is false, the tool assumes the output should hold its old value, thus creating a latch.
+      ```verilog
+      // BUG: What happens if en==0? A latch is inferred on 'y'.
+      always @(*) begin
+        if (en) 
+          y = d;
+      end
+      
+      // FIX: Provide a default value.
+      always @(*) begin
+        y = 0; // Default assignment
+        if (en)
+          y = d;
+      end
+      ```
+  2.  **Incomplete `case`**: A `case` statement without a `default` branch to cover all possible values of the selection signal.
+  3.  **Partial Assignment**: When only some bits of a register or vector are assigned in a branch, the unassigned bits will be latched.
 
   ### Lab Summary
-  The labs for this section demonstrate these exact failure modes. The RTL simulation shows incorrect "latched" behavior on the waveform, and the synthesized netlist clearly shows that the tool inferred latches where a simple MUX was intended. Adding a `default` value or an `else` clause fixes the issue, resulting in the correct combinational logic.
+  The labs for this section demonstrate these exact failure modes. They show Verilog code with incomplete `if` and `case` statements. The RTL simulation shows incorrect or strange "latched" behavior on the waveform, and the synthesized netlist clearly shows that the tool inferred latches or flip-flops where a simple MUX was intended. Adding a `default` value or an `else` clause fixes the issue, resulting in the correct combinational logic.
 
 </details>
 
@@ -294,20 +292,27 @@
   | :--- | :--- | :--- |
   | **Where it's used**| Inside an `always` or `initial` block. | Outside `always` blocks, at the module level. |
   | **When it runs** | During **simulation run-time**. | During **synthesis/elaboration time**. |
-  | **What it does** | Describes a behavior or provides a compact way to write repetitive assignments. | **Structurally replicates hardware**. It creates multiple copies of modules. |
+  | **What it does** | Describes a sequential behavior or provides a compact way to write repetitive assignments. | **Structurally replicates hardware**. It creates multiple copies of modules or logic. |
   | **Keyword** | `for` | `generate` / `endgenerate`, `genvar` |
   
   ### Procedural `for` Loop
   This is used for behavioral modeling and to make code more compact. **It does not create multiple copies of hardware**. A classic example is describing a shift register's behavior.
   
   ### Structural `generate for` Loop
-  This is a powerful synthesis construct used to create multiple instances of hardware. It's essential for building scalable and parameterized designs like N-bit registers or adders.
+  This is a powerful synthesis construct used to create multiple instances of hardware. It's essential for building scalable and parameterized designs.
+  * **Use Case**: Creating an N-bit register by instantiating N flip-flops, or building an N-bit ripple-carry adder by chaining together N full-adder modules.
+    ```verilog
+    // Example: Creating an 8-bit register using generate
+    genvar i;
+    generate
+      for (i=0; i<8; i=i+1) begin : reg_bits
+        d_ff flop_instance (.q(q[i]), .d(d[i]), .clk(clk));
+      end
+    endgenerate
+    ```
+  ### Lab Summary
+  The labs demonstrate the correct usage of both loops. They show a procedural `for` loop used to create a Demux (a behavioral description) and a `generate for` loop to create a scalable ripple-carry adder (a structural description). The key takeaway is that `generate` is preferred for building repetitive hardware structures because it is scalable, easily parameterized, and less error-prone than manually instantiating hundreds of modules.
 
-  ```verilog
-  // Example: Creating an 8-bit register using generate
-  genvar i;
-  generate
-    for (i=0; i<8; i=i+1) begin : reg_bits
-      d_ff flop_instance (.q(q[i]), .d(d[i]), .clk(clk));
-    end
-  endgenerate
+</details>
+
+  
