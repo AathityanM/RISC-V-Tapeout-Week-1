@@ -127,3 +127,50 @@
   This avoids using a complex and resource-intensive multiplier circuit, saving significant area, power, and delay. The synthesis tool implements this by simply re-wiring the connections, which is extremely efficient.
 
 </details>
+
+# Day 3 - Combinational and Sequential Optimizations
+
+<details>
+  <summary>🔹 Introduction to Optimizations</summary>
+
+  ### Combinational Logic Optimization
+  This involves simplifying a digital circuit to reduce **area**, increase **speed**, and lower **power consumption** without changing its function.
+  * **Techniques**: Boolean algebra, Karnaugh Maps (K-maps), and automated methods in synthesis tools.
+  * **Example**: Instead of using a full multiplier for `Y = A * 2`, the tool optimizes it to a simple left shift: `Y = A << 1`.
+  
+  ### Constant Propagation
+  This is a technique where constant values (`0` or `1`) are used to simplify logic.
+  * **Example**: The expression `F = A·1 + B·0` is simplified by the tool.
+    * `A·1` becomes `A`.
+    * `B·0` becomes `0`.
+    * The final optimized logic is `F = A`.
+  The constants "propagate" through the logic, eliminating unnecessary gates.
+
+  ### Sequential Logic Optimization
+  This focuses on improving circuits with memory elements like flip-flops. It aims to reduce the number of flops and shorten the critical path delay between them.
+  
+  ### Advanced Techniques
+  * **Retiming**: Moving flip-flops across combinational logic to balance path delays. This can significantly increase the maximum clock frequency a circuit can run at.
+  * **Cloning**: Duplicating logic to reduce the fan-out of a critical gate, which improves timing by decreasing the load on that gate.
+  * **Clock Gating**: Disabling the clock to sections of the design that are not in use to save dynamic power.
+
+</details>
+
+<details>
+  <summary>🔹 Lab: Combinational Logic Optimizations</summary>
+  
+  This lab demonstrates how a synthesis tool optimizes combinational logic.
+  * **Example**: An AND gate and an OR gate are implemented using only multiplexers (MUXes) in Verilog.
+  * **Observation**: When synthesized, the tool is smart enough to recognize the underlying logic. Instead of using a complex MUX-based structure, it maps the function to a simple, optimized `AND` or `OR` standard cell from the library. This shows the power of the synthesis tool in simplifying non-optimal code into an efficient hardware implementation.
+
+</details>
+
+<details>
+  <summary>🔹 Lab: Sequential Logic Optimizations</summary>
+
+  This lab explores how synthesis tools optimize circuits with flip-flops. The key takeaway is that the tool will remove any logic or flip-flops that are redundant or do not contribute to a primary output.
+  
+  * **Unused Output Optimization**: If a flip-flop's output doesn't connect to anything that ultimately affects a primary output of the module, the synthesis tool will identify it as unused and remove it completely to save area and power.
+  * **Counter Example**: A 3-bit counter would normally require 3 flip-flops. However, if the design has unused states or logic that can be simplified, the tool can perform optimizations. The lab shows an example where a counter's logic is optimized so significantly that it can be implemented with just one flip-flop, demonstrating a massive hardware saving.
+
+</details>
